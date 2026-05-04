@@ -1,7 +1,8 @@
-streamlit==1.32.0
+streamlit
 torch==2.0.1
 torchvision==0.15.2
 numpy
 pillow
 pandas
 opencv-python-headless
+git+https://github.com/jacobgil/pytorch-grad-cam.git
