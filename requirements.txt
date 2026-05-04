@@ -1,7 +1,7 @@
-streamlit
-torch
-torchvision
+streamlit==1.32.0
+torch==2.0.1
+torchvision==0.15.2
 numpy
 pillow
 pandas
-pytorch-grad-cam
+opencv-python-headless
