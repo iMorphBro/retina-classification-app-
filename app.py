@@ -124,7 +124,10 @@ if run_btn:
 
             model = load_model(model_option)
 
-            img_pil = Image.open(uploaded_file).convert('RGB')
+            img_pil = Image.open(uploaded_file)
+            if img_pil.mode != "RGB":
+                img_pil = img_pil.convert("RGB")
+                
             input_tensor = transform(img_pil).unsqueeze(0).to(device)
 
             with torch.no_grad():
