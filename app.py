@@ -22,7 +22,30 @@ st.set_page_config(layout="wide")
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class_names = ['cataract', 'diabetic_retinopathy', 'glaucoma', 'normal']
-THRESHOLD = 0.7
+THRESHOLD = 0.80  # lebih ketat
+
+# ======================
+# VALIDASI RETINA
+# ======================
+def is_retina_image(img_pil):
+    img = np.array(img_pil.resize((224, 224)))
+
+    # 1. Dominasi warna merah
+    r_mean = np.mean(img[:,:,0])
+    g_mean = np.mean(img[:,:,1])
+    b_mean = np.mean(img[:,:,2])
+    color_score = (r_mean > g_mean) and (r_mean > b_mean)
+
+    # 2. Area gelap di pinggir (circular retina)
+    gray = np.mean(img, axis=2)
+    edge_dark_ratio = np.mean(gray < 30)
+    circular_score = edge_dark_ratio > 0.08
+
+    # 3. Kontras (retina punya tekstur)
+    contrast = np.std(gray)
+    contrast_score = contrast > 20
+
+    return color_score and circular_score and contrast_score
 
 # ======================
 # LOAD MODEL
@@ -65,7 +88,6 @@ def load_model(model_option):
 
     return model
 
-
 # ======================
 # TRANSFORM
 # ======================
@@ -91,11 +113,11 @@ dengan interpretasi visual berbasis <b>Grad-CAM</b>
 """, unsafe_allow_html=True)
 
 # ======================
-# INPUT SECTION
+# INPUT
 # ======================
 st.markdown("## 📥 Input Data")
 
-col1, col2 = st.columns([1,1])
+col1, col2 = st.columns(2)
 
 with col1:
     uploaded_file = st.file_uploader("Upload Gambar Retina", type=["jpg", "png", "jpeg"])
@@ -120,14 +142,22 @@ if run_btn:
 
     if uploaded_file is not None:
 
+        img_pil = Image.open(uploaded_file)
+
+        if img_pil.mode != "RGB":
+            img_pil = img_pil.convert("RGB")
+
+        # ======================
+        # FILTER NON-RETINA
+        # ======================
+        if not is_retina_image(img_pil):
+            st.error("❌ Gambar bukan citra retina (fundus). Silakan upload gambar retina yang valid.")
+            st.stop()
+
         with st.spinner("Memproses gambar..."):
 
             model = load_model(model_option)
 
-            img_pil = Image.open(uploaded_file)
-            if img_pil.mode != "RGB":
-                img_pil = img_pil.convert("RGB")
-                
             input_tensor = transform(img_pil).unsqueeze(0).to(device)
 
             with torch.no_grad():
@@ -145,12 +175,12 @@ if run_btn:
                 is_valid = True
 
         # ======================
-        # RESULT SECTION
+        # OUTPUT
         # ======================
         st.markdown("---")
         st.markdown("## 📊 Hasil Prediksi")
 
-        col1, col2 = st.columns([1,1])
+        col1, col2 = st.columns(2)
 
         img = np.array(img_pil.resize((224, 224))).astype(np.float32) / 255.0
 
@@ -159,7 +189,7 @@ if run_btn:
 
         with col2:
             if not is_valid:
-                st.error("❌ Gambar tidak dikenali oleh model")
+                st.warning("⚠️ Model tidak yakin dengan prediksi")
             else:
                 st.success(f"### {pred_name.upper()}")
 
@@ -169,6 +199,7 @@ if run_btn:
         # GRAD-CAM
         # ======================
         if is_valid:
+
             st.markdown("---")
             st.markdown("## 🔥 Grad-CAM Visualization")
 
