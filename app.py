@@ -140,25 +140,27 @@ def load_models(training_option):
     # ======================
     # SQUEEZENET
     # ======================
-    squeezenet = models.squeezenet1_1(pretrained=True)
+    squeezenet = models.squeezenet1_1(pretrained=False)
+
+    in_features_sq = squeezenet.classifier[1].in_channels
 
     squeezenet.classifier = nn.Sequential(
+        nn.AdaptiveAvgPool2d((1,1)),
+        nn.Flatten(),
         nn.Dropout(0.5),
-        nn.Conv2d(512, 4, kernel_size=1),
-        nn.ReLU(inplace=True),
-        nn.AdaptiveAvgPool2d((1, 1))
+        nn.Linear(in_features_sq, 4)
     )
 
     # ======================
     # SHUFFLENET
     # ======================
-    shufflenet = models.shufflenet_v2_x1_0(pretrained=True)
+    shufflenet = models.shufflenet_v2_x1_0(pretrained=False)
 
-    in_features = shufflenet.fc.in_features
+    in_features_sh = shufflenet.fc.in_features
 
     shufflenet.fc = nn.Sequential(
         nn.Dropout(0.5),
-        nn.Linear(in_features, 4)
+        nn.Linear(in_features_sh, 4)
     )
 
     # ======================
@@ -166,19 +168,24 @@ def load_models(training_option):
     # ======================
     if training_option == "Fixed Feature":
 
-        squeeze_path = r"models/best_squeezenet_fixed_feature_non_aug.pth"
-        shuffle_path = r"models/best_shufflenet_fixed_feature_non_aug.pth"
+        squeeze_path = "models/best_squeezenet_fixed_feature_revisi.pth"
+        shuffle_path = "models/best_shufflenet_fixed_feature_revisi.pth"
 
     else:
 
-        squeeze_path = r"models/best_squeezenet_partial_finetuning_non_aug.pth"
-        shuffle_path = r"models/best_shufflenet_partial_finetuning_non_aug.pth"
+        squeeze_path = "models/best_squeezenet_partial_finetuning_revisi.pth"
+        shuffle_path = "models/best_shufflenet_partial_finetuning_revisi.pth"
 
     # ======================
-    # LOAD WEIGHT
+    # LOAD WEIGHTS
     # ======================
-    squeezenet.load_state_dict(torch.load(squeeze_path, map_location=device))
-    shufflenet.load_state_dict(torch.load(shuffle_path, map_location=device))
+    squeezenet.load_state_dict(
+        torch.load(squeeze_path, map_location=device)
+    )
+
+    shufflenet.load_state_dict(
+        torch.load(shuffle_path, map_location=device)
+    )
 
     squeezenet.to(device)
     shufflenet.to(device)
